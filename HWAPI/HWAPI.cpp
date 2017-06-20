@@ -3,9 +3,16 @@
 
 #include "stdafx.h"
 
+void Loop();
 
 int main()
 {
     return 0;
+
+}
+
+void Loop()
+{
+
 }
 
