@@ -84,9 +84,23 @@ bool Module::loop()
 			can_->messageTx.data[7] = 0;
 			can_->messageTx.data[6] = 0;
 		}
-		else if (can_->messageRx.data[1] == 187)
+		else if (can_->messageRx.data[2] == 187)
 		{
 			return false;
+		}
+		else if (can_->messageRx.data[2] == 204)
+		{
+			for (auto &conn : connectors)
+			{
+				if (conn->id == can_->messageRx.data[3])
+				{
+					std::cout << "MODULE PORT " << can_->messageRx.data[3] << " CHANGING VALUE TO " << can_->messageRx.data[4] << std::endl;
+					conn->value = can_->messageRx.data[4];
+				}
+			}
+			can_->messageTx = can_->messageRx;
+			can_->messageTx.id = can_->messageRx.data[1];
+			can_->messageTx.data[0] = id_;
 		}
 		else
 		{
