@@ -8,11 +8,13 @@
 #include <string>
 #include <vector>
 #include <boost\algorithm\string.hpp>
+#include <boost\thread.hpp>
 
 #define OWNID 100
 
 std::vector<Module*> modules;
 void createModules();
+void receive();
 
 void createModules()
 {
@@ -59,10 +61,29 @@ void createModules()
 				}
 			}
 		}
+		std::cout << "sending welcome Msg from module: " << modules.back()->id_ << std::endl;
+		modules.back()->sendWelcomeMessage();
+		receive();
 	}
 }
 
-CAN myCAN = CAN();
+void receive()
+{
+	for (;;)
+	{
+		for (const auto &module : modules)
+		{
+			if (module->loop())
+			{
+				module->sendMessage();
+			}
+		}
+		boost::this_thread::sleep_for(boost::chrono::milliseconds(2000));
+	}
+	
+}
+
+CAN myCAN = CAN(OWNID);
 
 // Setting up our devices and I/Os
 void setup() {
