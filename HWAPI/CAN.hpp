@@ -4,6 +4,7 @@
 #include <iostream>
 #include <sstream>
 #include <bitset>
+#include <boost\thread.hpp>
 class CAN
 {
 public:

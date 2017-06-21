@@ -32,9 +32,13 @@ void Module::sendWelcomeMessage()
 	can_->registerMessage();
 }
 
-void Module::sendMessage()
+bool Module::sendMessage()
 {
 	can_->registerMessage();
+	if (can_->messageTx.data[1] == 187)
+		return false;
+	else
+		return true;
 }
 
 bool Module::loop()
@@ -65,6 +69,7 @@ bool Module::loop()
 			can_->messageRx.data[i] = tmp;
 			std::cout << "Data[" << i << "] = " << tmp << std::endl;
 		}
+		buffer_ = "";
 		std::cout << "DBGOWE COS CO: " << can_->messageRx.data[1] << std::endl;
 		if (can_->messageRx.data[2] == 170)
 		{
@@ -91,6 +96,10 @@ bool Module::loop()
 		}
 		
 		return true;
+	}
+	else
+	{
+		buffer_ = "";
 	}
 	return false;
 }

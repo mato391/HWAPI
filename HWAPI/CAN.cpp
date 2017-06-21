@@ -34,5 +34,12 @@ void CAN::registerMessage()
 		std::fstream can_recv("D:\\private\\OSCAR\\New_Architecture_OSCAR\\OSCAR\\System\\CAN_recv.txt", std::ios::out);
 		can_recv << msg;
 		can_recv.close();
-	}	
+	}
+	else
+	{	
+		std::cout << "BUFFER IS NOT EMPTY" << std::endl;
+		boost::this_thread::sleep_for(boost::chrono::milliseconds(500));
+		registerMessage();
+	}
+	
 }

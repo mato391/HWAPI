@@ -16,7 +16,7 @@ public:
 	~Module();
 	void sendWelcomeMessage();
 	bool loop();
-	void sendMessage();
+	bool sendMessage();
 	int id_;
 	std::bitset<8> domain;
 private:

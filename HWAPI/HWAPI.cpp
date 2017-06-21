@@ -64,23 +64,26 @@ void createModules()
 		std::cout << "sending welcome Msg from module: " << modules.back()->id_ << std::endl;
 		modules.back()->sendWelcomeMessage();
 		receive();
+		std::cout << "Module initialized " << std::endl;
 	}
 }
 
 void receive()
 {
-	for (;;)
+	bool notLastForModule = true;
+	while (notLastForModule)
 	{
 		for (const auto &module : modules)
 		{
+			std::cout << "receiveLoop: module: " << module->domain << std::endl;
 			if (module->loop())
 			{
-				module->sendMessage();
+				notLastForModule = module->sendMessage();
+				std::cout << "Last message: " << notLastForModule << std::endl;
 			}
 		}
 		boost::this_thread::sleep_for(boost::chrono::milliseconds(2000));
 	}
-	
 }
 
 CAN myCAN = CAN(OWNID);
