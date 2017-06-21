@@ -100,8 +100,9 @@ bool Module::loop()
 	else
 	{
 		buffer_ = "";
+		return false;
 	}
-	return false;
+	
 }
 
 bool Module::messageAvailable()
@@ -117,7 +118,12 @@ bool Module::messageAvailable()
 		if (domainBinary == domain.to_string())
 			return true;
 		else
+		{
+			buffer_ = "";
 			return false;
+		}
+			
 	}
+	buffer_ = "";
 	return false;
 }

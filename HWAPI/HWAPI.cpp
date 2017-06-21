@@ -30,41 +30,45 @@ void createModules()
 	boost::split(splittedByModules, content, boost::is_any_of(";"));
 	for (const auto &module : splittedByModules)
 	{
-		//std::cout << "Getting elements from mmf " << module  << std::endl;
-		std::vector<std::string> splittedByElements;
-		boost::split(splittedByElements, module, boost::is_any_of("|"));
-		for (const auto &element : splittedByElements)
+		if (module.size() != 0)
 		{
-			std::vector<std::string> splittedByParams;
-			boost::split(splittedByParams, element, boost::is_any_of(":"));
-			if (splittedByParams[0] == "Module")
+			//std::cout << "Getting elements from mmf " << module  << std::endl;
+			std::vector<std::string> splittedByElements;
+			boost::split(splittedByElements, module, boost::is_any_of("|"));
+			for (const auto &element : splittedByElements)
 			{
-				std::cout << "Module found" << std::endl;
-				std::vector<std::string> splittedByValues;
-				boost::split(splittedByValues, splittedByParams[1], boost::is_any_of(","));
-				modules.push_back(new Module(std::stoul(splittedByValues[1], nullptr, 16)));
-			}
-			else if (splittedByParams[0].find("Connector") != std::string::npos)
-			{
-				std::cout << "Connector found" << std::endl;
-				std::vector<std::string> splittedByValues;
-				boost::split(splittedByValues, splittedByParams[1], boost::is_any_of(","));
-				for (auto &module : modules)
+				std::vector<std::string> splittedByParams;
+				boost::split(splittedByParams, element, boost::is_any_of(":"));
+				if (splittedByParams[0] == "Module")
 				{
-					if (module->connectors.size() <= std::stoi(splittedByValues[0]))
+					std::cout << "Module found" << std::endl;
+					std::vector<std::string> splittedByValues;
+					boost::split(splittedByValues, splittedByParams[1], boost::is_any_of(","));
+					modules.push_back(new Module(std::stoul(splittedByValues[1], nullptr, 16)));
+				}
+				else if (splittedByParams[0].find("Connector") != std::string::npos)
+				{
+					std::cout << "Connector found" << std::endl;
+					std::vector<std::string> splittedByValues;
+					boost::split(splittedByValues, splittedByParams[1], boost::is_any_of(","));
+					for (auto &module : modules)
 					{
-						module->connectors.push_back(new Module::Connector());
-						module->connectors.back()->id = std::stoi(splittedByValues[0]);
-						module->connectors.back()->value = !std::stoi(splittedByValues[0]);
-					}
+						if (module->connectors.size() <= std::stoi(splittedByValues[0]))
+						{
+							module->connectors.push_back(new Module::Connector());
+							module->connectors.back()->id = std::stoi(splittedByValues[0]);
+							module->connectors.back()->value = !std::stoi(splittedByValues[0]);
+						}
 
+					}
 				}
 			}
+			std::cout << "sending welcome Msg from module: " << modules.back()->id_ << std::endl;
+			modules.back()->sendWelcomeMessage();
+			receive();
+			std::cout << "Module initialized " << std::endl;
 		}
-		std::cout << "sending welcome Msg from module: " << modules.back()->id_ << std::endl;
-		modules.back()->sendWelcomeMessage();
-		receive();
-		std::cout << "Module initialized " << std::endl;
+		
 	}
 }
 
