@@ -46,7 +46,8 @@ void createModules()
 					boost::split(splittedByValues, splittedByParams[1], boost::is_any_of(","));
 					modules.push_back(new Module(std::stoul(splittedByValues[1], nullptr, 16)));
 				}
-				else if (splittedByParams[0].find("Connector") != std::string::npos)
+				else if (splittedByParams[0].find("Connector") != std::string::npos && 
+					splittedByParams[0].find("Group") == std::string::npos)
 				{
 					std::cout << "Connector found" << std::endl;
 					std::vector<std::string> splittedByValues;

@@ -77,12 +77,33 @@ bool Module::loop()
 			can_->messageTx.id = can_->messageRx.data[1];
 			can_->messageTx.data[0] = id_;
 			can_->messageTx.data[1] = 187;
-			can_->messageTx.data[2] = 15;
-			can_->messageTx.data[3] = 15;
-			can_->messageTx.data[4] = 15;
-			can_->messageTx.data[5] = 15;
-			can_->messageTx.data[7] = 0;
-			can_->messageTx.data[6] = 0;
+			int i = connectors.size();
+			int bytes = i / 8;
+			std::cout << "Connectors counter: " << i << " bytes to use: " << bytes << std::endl;
+			int rest = i % 8;
+			if (bytes > 0)
+			{
+				for (int i = 0; i < bytes; i++)
+				{
+					std::cout << "I: " << i << " messageTx.data[" << 2 + i << "]" << std::endl;
+					can_->messageTx.data[2 + i] = 255;
+				}
+
+				can_->messageTx.data[2 + bytes] = std::pow(2, rest);
+				for (int i = bytes + 3; i < 7 - bytes; i++)
+				{
+					std::cout << "messageTx.data[" << i << "] = " << 0 << std::endl;
+					can_->messageTx.data[i] = 0;
+				}
+			}
+			else
+			{
+				can_->messageTx.data[2] = std::pow(2, i - 1);
+			}
+			for (const auto &byte : can_->messageTx.data)
+			{
+				std::cout << static_cast<int>(byte) << std::endl;
+			}
 		}
 		else if (can_->messageRx.data[2] == 187)
 		{
