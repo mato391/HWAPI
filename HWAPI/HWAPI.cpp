@@ -11,10 +11,15 @@
 #include <boost\thread.hpp>
 
 #define OWNID 100
+#define DOOR_UNLOCK "011001000000000100000101110011000000101000000001000000000000000000000000"
+#define DOOR_LOCK "011001000000000100000101110011000000101000000000000000000000000000000000"
+#define OPEN_FRONT_LEFT "011001000000000100000101110011000000000000000000000000000000000000000000"
+#define CLOSE_FRONT_LEFT "011001000000000100000101110011000000000000000001000000000000000000000000"
 
 std::vector<Module*> modules;
 void createModules();
 void receive();
+void checkAndExecuteEnvSignal();
 
 void createModules()
 {
@@ -30,7 +35,7 @@ void createModules()
 	boost::split(splittedByModules, content, boost::is_any_of(";"));
 	for (const auto &module : splittedByModules)
 	{
-		if (module.size() != 0)
+		if (module.size() != 0 )
 		{
 			//std::cout << "Getting elements from mmf " << module  << std::endl;
 			std::vector<std::string> splittedByElements;
@@ -67,7 +72,8 @@ void createModules()
 			std::cout << "________________________________________________________________" << std::endl;
 			std::cout << "sending welcome Msg from module: " << modules.back()->id_ << std::endl;
 			modules.back()->sendWelcomeMessage();
-			receive();
+			if (modules.back()->domain != 7)
+				receive();
 			std::cout << "Module initialized " << std::endl;
 		}
 		
@@ -88,7 +94,7 @@ void receive()
 				std::cout << "Last message: " << notLastForModule << std::endl;
 			}
 		}
-		boost::this_thread::sleep_for(boost::chrono::milliseconds(2000));
+		boost::this_thread::sleep_for(boost::chrono::milliseconds(500));
 	}
 	std::cout << "____________________END OF RECEIVE_____________________" << std::endl;
 }
@@ -107,6 +113,62 @@ void setup() {
 	//myCAN.begin(1000);
 }
 
+void checkAndExecuteEnvSignal()
+{
+	std::fstream sig("D:\\private\\OSCAR\\New_Architecture_OSCAR\\OSCAR\\System\\simulator.txt", std::ios::in);
+	std::string content;
+	if (sig.good())
+	{
+		std::cout << "SIGNAL good" << std::endl;
+		sig >> content;
+	}
+	sig.close();
+	if (content != "")
+	{
+		if (content.find("DOOR_UNLOCK") != std::string::npos)
+		{
+			std::fstream mmf("D:\\private\\OSCAR\\New_Architecture_OSCAR\\OSCAR\\System\\CAN_recv.txt", std::ios::out);
+			std::string content = DOOR_UNLOCK;
+			if (mmf.good())
+			{
+				mmf << content;
+			}
+			mmf.close();
+		}
+		else if (content.find("DOOR_LOCK") != std::string::npos)
+		{
+			std::fstream mmf("D:\\private\\OSCAR\\New_Architecture_OSCAR\\OSCAR\\System\\CAN_recv.txt", std::ios::out);
+			std::string content = DOOR_LOCK;
+			if (mmf.good())
+			{
+				mmf << content;
+			}
+			mmf.close();
+		}
+		else if (content.find("OPEN_FRONT_LEFT") != std::string::npos)
+		{
+			std::fstream mmf("D:\\private\\OSCAR\\New_Architecture_OSCAR\\OSCAR\\System\\CAN_recv.txt", std::ios::out);
+			std::string content = OPEN_FRONT_LEFT;
+			if (mmf.good())
+			{
+				mmf << content;
+			}
+			mmf.close();
+		}
+		else if (content.find("CLOSE_FRONT_LEFT") != std::string::npos)
+		{
+			std::fstream mmf("D:\\private\\OSCAR\\New_Architecture_OSCAR\\OSCAR\\System\\CAN_recv.txt", std::ios::out);
+			std::string content = CLOSE_FRONT_LEFT;
+			if (mmf.good())
+			{
+				mmf << content;
+			}
+			mmf.close();
+		}
+	}
+	std::remove("D:\\private\\OSCAR\\New_Architecture_OSCAR\\OSCAR\\System\\simulator.txt");
+}
+
 void loop() {
 
 	while (1)
@@ -118,6 +180,7 @@ void loop() {
 				mod->sendMessage();
 			}
 		}
+		checkAndExecuteEnvSignal();
 		boost::this_thread::sleep_for(boost::chrono::milliseconds(200));
 	}
 	
@@ -160,7 +223,9 @@ void loop() {
 int main() {
 	setup();
 	createModules();
+	std::cout << "GOTO RUNTIME" << std::endl;
 	while (1) {
+
 		loop();
 	}
 	return (0);

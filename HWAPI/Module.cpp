@@ -35,7 +35,7 @@ void Module::sendWelcomeMessage()
 bool Module::sendMessage()
 {
 	can_->registerMessage();
-	if (can_->messageTx.data[2] == 188)
+	if (can_->messageTx.data[2] == 188 || (can_->messageTx.data[2] == 187 && can_->messageTx.data[1] == 7))
 		return false;
 	else
 		return true;
