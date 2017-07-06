@@ -30,7 +30,8 @@ void CAN::registerMessage()
 			std::cout << "element: " << static_cast<int>(element) << " | " << bitset.to_string() << std::endl;
 			msg += bitset.to_string();
 		}
-		std::cout << "CAN::registerMessage: " << msg << std::endl;
+		std::cout << "CAN::registerMessage: SENDING: " << msg << std::endl;
+		std::cout << "____________________________________________________" << std::endl;
 		std::fstream can_recv("D:\\private\\OSCAR\\New_Architecture_OSCAR\\OSCAR\\System\\CAN_recv.txt", std::ios::out);
 		can_recv << msg;
 		can_recv.close();

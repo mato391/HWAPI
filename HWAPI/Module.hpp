@@ -18,6 +18,7 @@ public:
 	bool loop();
 	bool sendMessage();
 	int id_;
+	int protocol;
 	std::bitset<8> domain;
 private:
 	CAN* can_;

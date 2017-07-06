@@ -64,6 +64,7 @@ void createModules()
 					}
 				}
 			}
+			std::cout << "________________________________________________________________" << std::endl;
 			std::cout << "sending welcome Msg from module: " << modules.back()->id_ << std::endl;
 			modules.back()->sendWelcomeMessage();
 			receive();
@@ -89,6 +90,7 @@ void receive()
 		}
 		boost::this_thread::sleep_for(boost::chrono::milliseconds(2000));
 	}
+	std::cout << "____________________END OF RECEIVE_____________________" << std::endl;
 }
 
 CAN myCAN = CAN(OWNID);
@@ -107,6 +109,18 @@ void setup() {
 
 void loop() {
 
+	while (1)
+	{
+		for (const auto &mod : modules)
+		{
+			if (mod->loop())
+			{
+				mod->sendMessage();
+			}
+		}
+		boost::this_thread::sleep_for(boost::chrono::milliseconds(200));
+	}
+	
 	//****************************************
 	// 1. Receive data
 	//****************************************
