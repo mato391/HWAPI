@@ -3,6 +3,8 @@
 #include <iostream>
 #include <bitset>
 #include "CAN.hpp"
+#include <boost\algorithm\string.hpp>
+#include <boost\thread.hpp>
 class Module
 {
 public:

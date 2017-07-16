@@ -173,6 +173,58 @@ bool Module::loop()
 					return true;
 				}
 			}
+			else if (protocol == 2)
+			{
+				std::string additional = std::to_string(can_->messageRx.data[5]);
+				int counter = std::stoi(additional.substr(0, 1));
+				std::cout << "COUNTER: " << counter << std::endl;
+				int interval = std::stoi(additional.substr(1, 1)) * 100;
+				std::cout << "INTERVAL: " << interval << std::endl;
+				Connector* GlobalConn = new Connector();
+				for (int i = 0; i < counter; i++)
+				{
+					if (can_->messageRx.data[2] == 204)
+					{
+						for (auto &conn : connectors)
+						{
+							if (conn->id == can_->messageRx.data[3])
+							{
+								std::cout << "MODULE PORT " << can_->messageRx.data[3] << " CHANGING VALUE TO " << can_->messageRx.data[4] << std::endl;
+								conn->value = can_->messageRx.data[4];
+								GlobalConn = conn;
+								break;
+							}
+						}
+						can_->messageTx = can_->messageRx;
+						can_->messageTx.id = can_->messageRx.data[1];
+						can_->messageTx.data[2] = 205;	//CD
+						can_->messageTx.data[1] = id_;
+						can_->messageTx.data[0] = protocol;
+						can_->messageTx.data[3] = can_->messageRx.data[3];
+						can_->messageTx.data[4] = GlobalConn->value;
+						can_->messageTx.data[5] = can_->messageRx.data[5];
+						can_->messageTx.data[6] = 0;
+						can_->messageTx.data[7] = 0;
+						sendMessage();
+
+						boost::this_thread::sleep(boost::posix_time::milliseconds(interval));
+
+						can_->messageTx = can_->messageRx;
+						can_->messageTx.id = can_->messageRx.data[1];
+						can_->messageTx.data[2] = 205;	//CD
+						can_->messageTx.data[1] = id_;
+						can_->messageTx.data[0] = protocol;
+						can_->messageTx.data[3] = can_->messageRx.data[3];
+						can_->messageTx.data[4] = !GlobalConn->value;
+						can_->messageTx.data[5] = can_->messageRx.data[5];
+						can_->messageTx.data[6] = 0;
+						can_->messageTx.data[7] = 0;
+						sendMessage();
+						boost::this_thread::sleep(boost::posix_time::milliseconds(interval));
+					}
+				}
+				return false;
+			}
 		}
 		return true;
 	}
