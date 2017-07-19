@@ -42,6 +42,4 @@ void CAN::registerMessage()
 		boost::this_thread::sleep_for(boost::chrono::milliseconds(500));
 		registerMessage();
 	}
-	
-	
 }
