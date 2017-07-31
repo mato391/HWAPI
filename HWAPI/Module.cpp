@@ -2,13 +2,13 @@
 #include "Module.hpp"
 
 
-Module::Module(int id) : 
+Module::Module(int id, src::logger_mt& lg) :
 	id_(id), 
-	can_(new CAN(id)), 
-	domain(id)
+	can_(new CAN(id, lg)), 
+	domain(id),
+	lg_(lg)
 {
-	std::cout << "MODULE " << id << " | " << domain.to_string() << " was created" << std::endl; 
-	
+	BOOST_LOG(lg_) << "INF " << "MODULE " << id << " | " << domain.to_string() << " was created";
 }
 
 
@@ -18,7 +18,7 @@ Module::~Module()
 
 void Module::sendWelcomeMessage()
 {
-	std::cout << "Module::sendWelcomeMessage" << std::endl;
+	BOOST_LOG(lg_) << "INF " << "Module::sendWelcomeMessage";
 	can_->messageTx.id = 100;
 	can_->messageTx.data[0] = 0;
 	can_->messageTx.data[1] = id_;
@@ -48,18 +48,18 @@ bool Module::loop()
 		std::fstream can_recv("D:\\private\\OSCAR\\New_Architecture_OSCAR\\OSCAR\\System\\CAN_recv.txt", std::ios::out);
 		can_recv << "";
 		can_recv.close();
-		std::cout << "MESSAGE AVAILABLE" << std::endl;
+		BOOST_LOG(lg_) << "INF " << "Module::loop: MOD[" << this->domain << "] " << "MESSAGE AVAILABLE";
 		int id = 0;
 		for (int i = 0; i < 8; i++)
 		{
 			id += std::stoi(buffer_.substr(i, 1)) * std::pow(2, (7 - i));
-			std::cout << "TMP equaling id: " << std::stoi(buffer_.substr(i, 1)) << " * " << std::pow(2, (7 - i)) << " = " << id <<  std::endl;
+			BOOST_LOG(lg_) << "INF " << "Module::loop: MOD[" << this->domain << "] " << "TMP equaling id: " << std::stoi(buffer_.substr(i, 1)) << " * " << std::pow(2, (7 - i)) << " = " << id;
 		}
 		can_->messageRx.id = id;
 		if (id == this->id_)
 		{
 
-			std::cout << "Message to: " << id << std::endl;
+			BOOST_LOG(lg_) << "INF " << "Module::loop: MOD[" << this->domain << "] " << "Message to: " << id;
 			for (int i = 1; i <= 8; i++)
 			{
 				int tmp = 0;
@@ -70,16 +70,16 @@ bool Module::loop()
 					powTmp--;
 				}
 				can_->messageRx.data[i - 1] = tmp;
-				std::cout << "Data[" << i << "] = " << tmp << std::endl;
+				BOOST_LOG(lg_) << "INF " << "Module::loop: MOD[" << this->domain << "] " << "Data[" << i << "] = " << tmp;
 			}
 			buffer_ = "";
-			std::cout << "DBGOWE COS CO: " << can_->messageRx.data[1] << std::endl;
+			//std::cout << "DBGOWE COS CO: " << can_->messageRx.data[1] << std::endl;
 			int protocol = can_->messageRx.data[0];
 			if (protocol == 0)
 			{
 				if (can_->messageRx.data[2] == 170)
 				{
-					std::cout << "AA message responded" << std::endl;
+					BOOST_LOG(lg_) << "INF " << "Module::loop: MOD[" << this->domain << "] " << "AA message responded";
 					can_->messageTx.id = can_->messageRx.data[1];
 					can_->messageTx.data[0] = 0;
 					can_->messageTx.data[1] = id_;
@@ -87,20 +87,20 @@ bool Module::loop()
 
 					int i = connectors.size();
 					int bytes = i / 8;
-					std::cout << "Connectors counter: " << i << " bytes to use: " << bytes << std::endl;
+					BOOST_LOG(lg_) << "INF " << "Module::loop: MOD[" << this->domain << "] " << "Connectors counter: " << i << " bytes to use: " << bytes;
 					int rest = i % 8;
 					if (bytes > 0)
 					{
 						for (int i = 0; i < bytes; i++)
 						{
-							std::cout << "I: " << i << " messageTx.data[" << 3 + i << "]" << std::endl;
+							BOOST_LOG(lg_) << "INF " << "Module::loop: MOD[" << this->domain << "] " << "I: " << i << " messageTx.data[" << 3 + i << "]";
 							can_->messageTx.data[3 + i] = 255;
 						}
 
 						can_->messageTx.data[3 + bytes] = std::pow(2, rest);
 						for (int i = bytes + 3; i < 7 - bytes; i++)
 						{
-							std::cout << "messageTx.data[" << i << "] = " << 0 << std::endl;
+							BOOST_LOG(lg_) << "INF " << "Module::loop: MOD[" << this->domain << "] " << "messageTx.data[" << i << "] = " << 0;
 							can_->messageTx.data[i] = 0;
 						}
 					}
@@ -115,13 +115,13 @@ bool Module::loop()
 				}
 				else if (can_->messageRx.data[2] == 188)
 				{
-					protocol = can_->messageRx.data[3] + can_->messageRx.data[4];
-					std::cout << "PROTOCOL SETUP MESSAGE DETECTED" << can_->messageRx.data[3] << can_->messageRx.data[4] << std::endl;
+					this->protocol = static_cast<int>(can_->messageRx.data[3]) + static_cast<int>(can_->messageRx.data[4]);
+					BOOST_LOG(lg_) << "INF " << "Module::loop: MOD[" << this->domain << "] " << "PROTOCOL SETUP MESSAGE DETECTED" << static_cast<int>(can_->messageRx.data[3]) << static_cast<int>(can_->messageRx.data[4]) << std::endl;
 					can_->messageTx = can_->messageRx;
 					can_->messageTx.id = can_->messageRx.data[1];
 					can_->messageTx.data[2] = can_->messageRx.data[2];
 					can_->messageTx.data[1] = id_;
-					can_->messageRx.data[0] = protocol;
+					can_->messageRx.data[0] = this->protocol;
 				}
 				else if (can_->messageRx.data[2] == 204)
 				{
@@ -129,7 +129,7 @@ bool Module::loop()
 					{
 						if (conn->id == can_->messageRx.data[3])
 						{
-							std::cout << "MODULE PORT " << can_->messageRx.data[3] << " CHANGING VALUE TO " << can_->messageRx.data[4] << std::endl;
+							BOOST_LOG(lg_) << "INF " << "Module::loop: MOD[" << this->domain << "] " << "MODULE PORT " << static_cast<int>(can_->messageRx.data[3]) << " CHANGING VALUE TO " << static_cast<int>(can_->messageRx.data[4]);
 							conn->value = can_->messageRx.data[4];
 						}
 					}
@@ -155,7 +155,7 @@ bool Module::loop()
 					{
 						if (conn->id == can_->messageRx.data[3])
 						{
-							std::cout << "MODULE PORT " << can_->messageRx.data[3] << " CHANGING VALUE TO " << can_->messageRx.data[4] << std::endl;
+							BOOST_LOG(lg_) << "INF " << "Module::loop: MOD[" << this->domain << "] " << "MODULE PORT " << can_->messageRx.data[3] << " CHANGING VALUE TO " << can_->messageRx.data[4];
 							conn->value = can_->messageRx.data[4];
 							break;
 						}
@@ -175,54 +175,8 @@ bool Module::loop()
 			}
 			else if (protocol == 2)
 			{
-				std::string additional = std::to_string(can_->messageRx.data[5]);
-				int counter = std::stoi(additional.substr(0, 1));
-				std::cout << "COUNTER: " << counter << std::endl;
-				int interval = std::stoi(additional.substr(1, 1)) * 100;
-				std::cout << "INTERVAL: " << interval << std::endl;
-				Connector* GlobalConn = new Connector();
-				for (int i = 0; i < counter; i++)
-				{
-					if (can_->messageRx.data[2] == 204)
-					{
-						for (auto &conn : connectors)
-						{
-							if (conn->id == can_->messageRx.data[3])
-							{
-								std::cout << "MODULE PORT " << can_->messageRx.data[3] << " CHANGING VALUE TO " << can_->messageRx.data[4] << std::endl;
-								conn->value = can_->messageRx.data[4];
-								GlobalConn = conn;
-								break;
-							}
-						}
-						can_->messageTx = can_->messageRx;
-						can_->messageTx.id = can_->messageRx.data[1];
-						can_->messageTx.data[2] = 205;	//CD
-						can_->messageTx.data[1] = id_;
-						can_->messageTx.data[0] = protocol;
-						can_->messageTx.data[3] = can_->messageRx.data[3];
-						can_->messageTx.data[4] = GlobalConn->value;
-						can_->messageTx.data[5] = can_->messageRx.data[5];
-						can_->messageTx.data[6] = 0;
-						can_->messageTx.data[7] = 0;
-						sendMessage();
-
-						boost::this_thread::sleep(boost::posix_time::milliseconds(interval));
-
-						can_->messageTx = can_->messageRx;
-						can_->messageTx.id = can_->messageRx.data[1];
-						can_->messageTx.data[2] = 205;	//CD
-						can_->messageTx.data[1] = id_;
-						can_->messageTx.data[0] = protocol;
-						can_->messageTx.data[3] = can_->messageRx.data[3];
-						can_->messageTx.data[4] = !GlobalConn->value;
-						can_->messageTx.data[5] = can_->messageRx.data[5];
-						can_->messageTx.data[6] = 0;
-						can_->messageTx.data[7] = 0;
-						sendMessage();
-						boost::this_thread::sleep(boost::posix_time::milliseconds(interval));
-					}
-				}
+				boost::thread t(std::bind(&Module::protocol2, this));
+				t.detach();
 				return false;
 			}
 		}
@@ -236,12 +190,68 @@ bool Module::loop()
 	
 }
 
+void Module::protocol2()
+{
+	std::string additional = std::to_string(can_->messageRx.data[5]);
+	int counter = std::stoi(additional.substr(0, 1));
+	BOOST_LOG(lg_) << "INF " << "Module::protocol2: MOD[" << this->domain << "] " << "COUNTER: " << counter;
+	int interval = 0;
+	if (additional.size() == 2)
+		interval = std::stoi(additional.substr(1, 1)) * 100;
+	else
+		interval = std::stoi(additional.substr(1, 2)) * 100;
+	BOOST_LOG(lg_) << "INF " << "Module::protocol2: MOD[" << this->domain << "] " << "INTERVAL: " << interval;
+	Connector* GlobalConn = new Connector();
+	for (int i = 0; i < counter; i++)
+	{
+		if (can_->messageRx.data[2] == 204)
+		{
+			for (auto &conn : connectors)
+			{
+				if (conn->id == can_->messageRx.data[3])
+				{
+					BOOST_LOG(lg_) << "INF " << "Module::protocol2: MOD[" << this->domain << "] " << "MODULE PORT " << can_->messageRx.data[3] << " CHANGING VALUE TO " << can_->messageRx.data[4];
+					conn->value = can_->messageRx.data[4];
+					GlobalConn = conn;
+					break;
+				}
+			}
+			can_->messageTx = can_->messageRx;
+			can_->messageTx.id = can_->messageRx.data[1];
+			can_->messageTx.data[2] = 205;	//CD
+			can_->messageTx.data[1] = id_;
+			can_->messageTx.data[0] = protocol;
+			can_->messageTx.data[3] = can_->messageRx.data[3];
+			can_->messageTx.data[4] = GlobalConn->value;
+			can_->messageTx.data[5] = can_->messageRx.data[5];
+			can_->messageTx.data[6] = 0;
+			can_->messageTx.data[7] = 0;
+			sendMessage();
+
+			boost::this_thread::sleep(boost::posix_time::milliseconds(interval));
+
+			can_->messageTx = can_->messageRx;
+			can_->messageTx.id = can_->messageRx.data[1];
+			can_->messageTx.data[2] = 205;	//CD
+			can_->messageTx.data[1] = id_;
+			can_->messageTx.data[0] = protocol;
+			can_->messageTx.data[3] = can_->messageRx.data[3];
+			can_->messageTx.data[4] = !GlobalConn->value;
+			can_->messageTx.data[5] = can_->messageRx.data[5];
+			can_->messageTx.data[6] = 0;
+			can_->messageTx.data[7] = 0;
+			sendMessage();
+			boost::this_thread::sleep(boost::posix_time::milliseconds(interval));
+		}
+	}
+}
+
 bool Module::messageAvailable()
 {
 	std::fstream can_recv("D:\\private\\OSCAR\\New_Architecture_OSCAR\\OSCAR\\System\\CAN_recv.txt", std::ios::in);
 	can_recv >> buffer_;
 	can_recv.close();
-	std::cout << "Module::messageAvailable: " << buffer_ << " | " << buffer_.size() << std::endl;
+	BOOST_LOG(lg_) << "INF " << "Module::messageAvailable: MOD[" << this->domain << "] " << "Module::messageAvailable: " << buffer_ << " | " << buffer_.size();
 	if (buffer_ != "" && buffer_.size() == 72)
 	{
 		auto domainBinary = buffer_.substr(0, 8);

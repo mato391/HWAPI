@@ -2,7 +2,7 @@
 #include "CAN.hpp"
 
 
-CAN::CAN(int id) : id_(id)
+CAN::CAN(int id, src::logger_mt& lg) : id_(id), lg_(lg)
 {
 
 }
@@ -18,7 +18,7 @@ void CAN::registerMessage()
 	std::string isEmpty;
 	can_recv >> isEmpty;
 	can_recv.close();
-	std::cout << "registerMessage::precondition: register is: " << isEmpty << " | " << isEmpty.size() << std::endl;
+	BOOST_LOG(lg_) << "INF " << "CAN::registerMessage " << "registerMessage::precondition: register is: " << isEmpty << " | " << isEmpty.size();
 	if (isEmpty.size() == 0)
 	{
 		std::bitset<8> id(static_cast<int>(messageTx.id));
@@ -27,11 +27,11 @@ void CAN::registerMessage()
 		for (const auto &element : messageTx.data)
 		{
 			std::bitset<8> bitset(static_cast<int>(element));
-			std::cout << "element: " << static_cast<int>(element) << " | " << bitset.to_string() << std::endl;
+			BOOST_LOG(lg_) << "INF " << "CAN::registerMessage " << "element: " << static_cast<int>(element) << " | " << bitset.to_string();
 			msg += bitset.to_string();
 		}
-		std::cout << "CAN::registerMessage: SENDING: " << msg << std::endl;
-		std::cout << "____________________________________________________" << std::endl;
+		BOOST_LOG(lg_) << "INF " << "CAN::registerMessage " << "CAN::registerMessage: SENDING: " << msg;
+		BOOST_LOG(lg_) << "____________________________________________________";
 		std::fstream can_recv("D:\\private\\OSCAR\\New_Architecture_OSCAR\\OSCAR\\System\\CAN_recv.txt", std::ios::out);
 		can_recv << msg;
 		can_recv.close();

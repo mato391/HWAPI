@@ -9,25 +9,44 @@
 #include <vector>
 #include <boost\algorithm\string.hpp>
 #include <boost\thread.hpp>
+#include <boost/log/trivial.hpp>
+#include <boost/move/utility.hpp>
+#include <boost/log/sources/logger.hpp>
+#include <boost/log/sources/record_ostream.hpp>
+#include <boost/log/sources/global_logger_storage.hpp>
+#include <boost/log/utility/setup/file.hpp>
+#include <boost/log/sources/severity_logger.hpp>
+#include <boost/log/utility/setup/common_attributes.hpp>
+#include <boost/filesystem.hpp>
+
+namespace logging = boost::log;
+namespace src = boost::log::sources;
+namespace keywords = boost::log::keywords;
+
+
+
+BOOST_LOG_INLINE_GLOBAL_LOGGER_DEFAULT(my_logger, src::logger_mt)
 
 #define OWNID 100
 #define DOOR_UNLOCK "011001000000000100000101110011000000101000000001000000000000000000000000"
-#define DOOR_LOCK "011001000000000100000101110011000000101000000000000000000000000000000000"
+#define DOOR_LOCK   "011001000000000100000101110011000000101000000000000000000000000000000000"
 #define OPEN_FRONT_LEFT "011001000000000100000101110011000000000000000000000000000000000000000000"
 #define CLOSE_FRONT_LEFT "011001000000000100000101110011000000000000000001000000000000000000000000"
 
 std::vector<Module*> modules;
-void createModules();
-void receive();
-void checkAndExecuteEnvSignal();
+void createModules(src::logger_mt& logger);
+void receive(src::logger_mt& logger);
+void checkAndExecuteEnvSignal(src::logger_mt& logger);
 
-void createModules()
+
+
+void createModules(src::logger_mt& logger)
 {
 	std::fstream mmf("D:\\private\\OSCAR\\New_Architecture_OSCAR\\OSCAR\\config\\hwf.txt", std::ios::in);
 	std::string content;
 	if (mmf.good())
 	{
-		std::cout << "createModules: mmf good" << std::endl;
+		BOOST_LOG(logger) << "INF: " << "createModules: mmf good";
 		mmf >> content;
 	}
 	mmf.close();
@@ -46,15 +65,15 @@ void createModules()
 				boost::split(splittedByParams, element, boost::is_any_of(":"));
 				if (splittedByParams[0] == "Module")
 				{
-					std::cout << "Module found" << std::endl;
+					BOOST_LOG(logger) << "INF " << "Module found";
 					std::vector<std::string> splittedByValues;
 					boost::split(splittedByValues, splittedByParams[1], boost::is_any_of(","));
-					modules.push_back(new Module(std::stoul(splittedByValues[1], nullptr, 16)));
+					modules.push_back(new Module(std::stoul(splittedByValues[1], nullptr, 16), logger));
 				}
 				else if (splittedByParams[0].find("Connector") != std::string::npos && 
 					splittedByParams[0].find("Group") == std::string::npos)
 				{
-					std::cout << "Connector found" << std::endl;
+					BOOST_LOG(logger) << "INF " << "Connector found";
 					std::vector<std::string> splittedByValues;
 					boost::split(splittedByValues, splittedByParams[1], boost::is_any_of(","));
 					for (auto &module : modules)
@@ -69,37 +88,38 @@ void createModules()
 					}
 				}
 			}
-			std::cout << "________________________________________________________________" << std::endl;
-			std::cout << "sending welcome Msg from module: " << modules.back()->id_ << std::endl;
+			BOOST_LOG(logger) << "________________________________________________________________________________";
+			BOOST_LOG(logger) << "INF " << "sending welcome Msg from module : " << modules.back()->id_;
 			modules.back()->sendWelcomeMessage();
 			if (modules.back()->domain != 7)
-				receive();
-			std::cout << "Module initialized " << std::endl;
+				receive(logger);
+			BOOST_LOG(logger) << "INF " << "Module initialized ";
+			
 		}
 		
 	}
 }
 
-void receive()
+void receive(src::logger_mt& logger)
 {
 	bool notLastForModule = true;
 	while (notLastForModule)
 	{
 		for (const auto &module : modules)
 		{
-			std::cout << "receiveLoop: module: " << module->domain << std::endl;
+			BOOST_LOG(logger) << "INF " << "receiveLoop: module: " << module->domain;
 			if (module->loop())
 			{
 				notLastForModule = module->sendMessage();
-				std::cout << "Last message: " << notLastForModule << std::endl;
+				BOOST_LOG(logger) << "INF " << "Last message : " << notLastForModule;
 			}
 		}
-		boost::this_thread::sleep_for(boost::chrono::milliseconds(500));
+		boost::this_thread::sleep_for(boost::chrono::milliseconds(200));
 	}
-	std::cout << "____________________END OF RECEIVE_____________________" << std::endl;
+	BOOST_LOG(logger) << "____________________END OF RECEIVE_____________________";
 }
 
-CAN myCAN = CAN(OWNID);
+//CAN myCAN = CAN(OWNID, lg);
 
 // Setting up our devices and I/Os
 void setup() {
@@ -113,13 +133,13 @@ void setup() {
 	//myCAN.begin(1000);
 }
 
-void checkAndExecuteEnvSignal()
+void checkAndExecuteEnvSignal(src::logger_mt& logger)
 {
 	std::fstream sig("D:\\private\\OSCAR\\New_Architecture_OSCAR\\OSCAR\\System\\simulator.txt", std::ios::in);
 	std::string content;
 	if (sig.good())
 	{
-		std::cout << "SIGNAL good" << std::endl;
+		BOOST_LOG(logger) << "INF " << "checkAndExecuteEnvSignal " << "SIGNAL good" << std::endl;
 		sig >> content;
 	}
 	sig.close();
@@ -169,7 +189,7 @@ void checkAndExecuteEnvSignal()
 	std::remove("D:\\private\\OSCAR\\New_Architecture_OSCAR\\OSCAR\\System\\simulator.txt");
 }
 
-void loop() {
+void loop(src::logger_mt& logger) {
 
 	while (1)
 	{
@@ -180,7 +200,7 @@ void loop() {
 				mod->sendMessage();
 			}
 		}
-		checkAndExecuteEnvSignal();
+		checkAndExecuteEnvSignal(logger);
 		boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
 	}
 	
@@ -221,12 +241,24 @@ void loop() {
 }
 
 int main() {
+	src::logger_mt& lg = my_logger::get();
+	logging::add_file_log
+	(
+		keywords::file_name = "D:\\private\\OSCAR\\New_Architecture_OSCAR\\OSCAR\\Logs\\SIM_SYSLOG_%N.log",
+		keywords::rotation_size = 10 * 1024 * 1024,
+		keywords::time_based_rotation = boost::log::sinks::file::rotation_at_time_point(0, 0, 0),
+		keywords::format = "[%TimeStamp%]: %Message%",
+		keywords::auto_flush = true
+	);
+	logging::add_common_attributes();
+	logging::record rec = lg.open_record();
+
 	setup();
-	createModules();
-	std::cout << "GOTO RUNTIME" << std::endl;
+	createModules(lg);
+	BOOST_LOG(lg) << "INF " << "GOTO RUNTIME";
 	while (1) {
 
-		loop();
+		loop(lg);
 	}
 	return (0);
 }
