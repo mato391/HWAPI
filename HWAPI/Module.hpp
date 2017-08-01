@@ -43,5 +43,6 @@ private:
 	std::string buffer_;
 	bool messageAvailable();
 	void protocol2();
+	void protocol6();
 };
 

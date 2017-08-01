@@ -91,22 +91,14 @@ bool Module::loop()
 					int rest = i % 8;
 					if (bytes > 0)
 					{
-						for (int i = 0; i < bytes; i++)
-						{
-							BOOST_LOG(lg_) << "INF " << "Module::loop: MOD[" << this->domain << "] " << "I: " << i << " messageTx.data[" << 3 + i << "]";
-							can_->messageTx.data[3 + i] = 255;
-						}
+						BOOST_LOG(lg_) << "INF " << "Module::loop: MOD[" << this->domain << "] " << "I: " << i << " messageTx.data[" << 3 << "]";
+						can_->messageTx.data[3] = 255;
+						can_->messageTx.data[4] = std::pow(2, rest);
 
-						can_->messageTx.data[3 + bytes] = std::pow(2, rest);
-						for (int i = bytes + 3; i < 7 - bytes; i++)
-						{
-							BOOST_LOG(lg_) << "INF " << "Module::loop: MOD[" << this->domain << "] " << "messageTx.data[" << i << "] = " << 0;
-							can_->messageTx.data[i] = 0;
-						}
 					}
 					else
 					{
-						can_->messageTx.data[3] = std::pow(2, i - 1);
+						can_->messageTx.data[3] = std::pow(2, rest);
 					}
 					for (const auto &byte : can_->messageTx.data)
 					{
@@ -179,6 +171,12 @@ bool Module::loop()
 				t.detach();
 				return false;
 			}
+			else if (protocol == 6)
+			{
+				boost::thread t(std::bind(&Module::protocol6, this));
+				t.detach();
+				return false;
+			}
 		}
 		return true;
 	}
@@ -188,6 +186,48 @@ bool Module::loop()
 		return false;
 	}
 	
+}
+
+void Module::protocol6()
+{
+	BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " Protocol6 detected";
+	int mask1 = can_->messageRx.data[3];
+	int mask2 = can_->messageRx.data[4];
+	if (mask1 != 0)
+	{
+		std::bitset<8> bMask1(mask1);
+
+		for (int i = 0; i < 8; i++)
+		{
+			BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " connector id: " << i << " changing value to " << bMask1[i];
+			connectors[i]->value = bMask1[i];
+		}
+	}
+	std::bitset<8> bMask2(mask2);
+	if (connectors.size() >= 8)
+	{
+		for (int i = 8; i < 16; i++)
+		{
+			if (i >= connectors.size())
+			{
+				can_->messageTx = can_->messageRx;
+				can_->messageTx.id = can_->messageRx.data[1];
+				can_->messageTx.data[2] = 205;	//CD
+				can_->messageTx.data[1] = id_;
+				can_->messageTx.data[0] = protocol;
+				can_->messageTx.data[3] = can_->messageRx.data[3];
+				can_->messageTx.data[4] = can_->messageRx.data[4];
+				can_->messageTx.data[5] = 0;
+				can_->messageTx.data[6] = 0;
+				can_->messageTx.data[7] = 0;
+				sendMessage();
+				return;
+			}
+			connectors[i]->value = bMask2[i - 8];
+			BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " connector id: " << i << " changing value to " << bMask2[i - 8];
+
+		}
+	}
 }
 
 void Module::protocol2()
