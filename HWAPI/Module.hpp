@@ -20,6 +20,14 @@ namespace logging = boost::log;
 namespace src = boost::log::sources;
 namespace keywords = boost::log::keywords;
 
+class Interuption
+{
+public:
+	Interuption(int connId) { this->connId = connId; value = false; };
+	connId;
+	value;
+};
+
 class Module
 {
 public:
@@ -41,6 +49,7 @@ private:
 	src::logger_mt& lg_;
 	CAN* can_;
 	std::string buffer_;
+	Interuption* interuption_;
 	bool messageAvailable();
 	void protocol2();
 	void protocol6();

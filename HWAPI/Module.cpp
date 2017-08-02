@@ -242,48 +242,103 @@ void Module::protocol2()
 		interval = std::stoi(additional.substr(1, 2)) * 100;
 	BOOST_LOG(lg_) << "INF " << "Module::protocol2: MOD[" << this->domain << "] " << "INTERVAL: " << interval;
 	Connector* GlobalConn = new Connector();
-	for (int i = 0; i < counter; i++)
+	if (counter < 9)
 	{
-		if (can_->messageRx.data[2] == 204)
+		if (interuption_ != nullptr && can_->messageRx.data[3] == interuption_->connId)
 		{
-			for (auto &conn : connectors)
+			interuption_->value = true;
+		}
+		for (int i = 0; i < counter; i++)
+		{
+			if (can_->messageRx.data[2] == 204)
 			{
-				if (conn->id == can_->messageRx.data[3])
+				for (auto &conn : connectors)
 				{
-					BOOST_LOG(lg_) << "INF " << "Module::protocol2: MOD[" << this->domain << "] " << "MODULE PORT " << can_->messageRx.data[3] << " CHANGING VALUE TO " << can_->messageRx.data[4];
-					conn->value = can_->messageRx.data[4];
-					GlobalConn = conn;
-					break;
+					if (conn->id == can_->messageRx.data[3])
+					{
+						BOOST_LOG(lg_) << "INF " << "Module::protocol2: MOD[" << this->domain << "] " << "MODULE PORT " << can_->messageRx.data[3] << " CHANGING VALUE TO " << can_->messageRx.data[4];
+						conn->value = can_->messageRx.data[4];
+						GlobalConn = conn;
+						break;
+					}
 				}
+				can_->messageTx = can_->messageRx;
+				can_->messageTx.id = can_->messageRx.data[1];
+				can_->messageTx.data[2] = 205;	//CD
+				can_->messageTx.data[1] = id_;
+				can_->messageTx.data[0] = protocol;
+				can_->messageTx.data[3] = can_->messageRx.data[3];
+				can_->messageTx.data[4] = GlobalConn->value;
+				can_->messageTx.data[5] = can_->messageRx.data[5];
+				can_->messageTx.data[6] = 0;
+				can_->messageTx.data[7] = 0;
+				sendMessage();
+
+				boost::this_thread::sleep(boost::posix_time::milliseconds(interval));
+
+				can_->messageTx = can_->messageRx;
+				can_->messageTx.id = can_->messageRx.data[1];
+				can_->messageTx.data[2] = 205;	//CD
+				can_->messageTx.data[1] = id_;
+				can_->messageTx.data[0] = protocol;
+				can_->messageTx.data[3] = can_->messageRx.data[3];
+				can_->messageTx.data[4] = !GlobalConn->value;
+				can_->messageTx.data[5] = can_->messageRx.data[5];
+				can_->messageTx.data[6] = 0;
+				can_->messageTx.data[7] = 0;
+				sendMessage();
+				boost::this_thread::sleep(boost::posix_time::milliseconds(interval));
 			}
-			can_->messageTx = can_->messageRx;
-			can_->messageTx.id = can_->messageRx.data[1];
-			can_->messageTx.data[2] = 205;	//CD
-			can_->messageTx.data[1] = id_;
-			can_->messageTx.data[0] = protocol;
-			can_->messageTx.data[3] = can_->messageRx.data[3];
-			can_->messageTx.data[4] = GlobalConn->value;
-			can_->messageTx.data[5] = can_->messageRx.data[5];
-			can_->messageTx.data[6] = 0;
-			can_->messageTx.data[7] = 0;
-			sendMessage();
-
-			boost::this_thread::sleep(boost::posix_time::milliseconds(interval));
-
-			can_->messageTx = can_->messageRx;
-			can_->messageTx.id = can_->messageRx.data[1];
-			can_->messageTx.data[2] = 205;	//CD
-			can_->messageTx.data[1] = id_;
-			can_->messageTx.data[0] = protocol;
-			can_->messageTx.data[3] = can_->messageRx.data[3];
-			can_->messageTx.data[4] = !GlobalConn->value;
-			can_->messageTx.data[5] = can_->messageRx.data[5];
-			can_->messageTx.data[6] = 0;
-			can_->messageTx.data[7] = 0;
-			sendMessage();
-			boost::this_thread::sleep(boost::posix_time::milliseconds(interval));
 		}
 	}
+	else
+	{
+		interuption_ = new Interuption(can_->messageRx.data[3]);
+		while (!interuption_->value)
+		{
+			if (can_->messageRx.data[2] == 204)
+			{
+				for (auto &conn : connectors)
+				{
+					if (conn->id == can_->messageRx.data[3])
+					{
+						BOOST_LOG(lg_) << "INF " << "Module::protocol2: MOD[" << this->domain << "] " << "MODULE PORT " << can_->messageRx.data[3] << " CHANGING VALUE TO " << can_->messageRx.data[4];
+						conn->value = can_->messageRx.data[4];
+						GlobalConn = conn;
+						break;
+					}
+				}
+				can_->messageTx = can_->messageRx;
+				can_->messageTx.id = can_->messageRx.data[1];
+				can_->messageTx.data[2] = 205;	//CD
+				can_->messageTx.data[1] = id_;
+				can_->messageTx.data[0] = protocol;
+				can_->messageTx.data[3] = can_->messageRx.data[3];
+				can_->messageTx.data[4] = GlobalConn->value;
+				can_->messageTx.data[5] = can_->messageRx.data[5];
+				can_->messageTx.data[6] = 0;
+				can_->messageTx.data[7] = 0;
+				sendMessage();
+
+				boost::this_thread::sleep(boost::posix_time::milliseconds(interval));
+
+				can_->messageTx = can_->messageRx;
+				can_->messageTx.id = can_->messageRx.data[1];
+				can_->messageTx.data[2] = 205;	//CD
+				can_->messageTx.data[1] = id_;
+				can_->messageTx.data[0] = protocol;
+				can_->messageTx.data[3] = can_->messageRx.data[3];
+				can_->messageTx.data[4] = !GlobalConn->value;
+				can_->messageTx.data[5] = can_->messageRx.data[5];
+				can_->messageTx.data[6] = 0;
+				can_->messageTx.data[7] = 0;
+				sendMessage();
+				boost::this_thread::sleep(boost::posix_time::milliseconds(interval));
+			}
+		}
+		delete interuption_;
+	}
+
 }
 
 bool Module::messageAvailable()

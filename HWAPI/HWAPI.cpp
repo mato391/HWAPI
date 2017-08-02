@@ -32,6 +32,9 @@ BOOST_LOG_INLINE_GLOBAL_LOGGER_DEFAULT(my_logger, src::logger_mt)
 #define DOOR_LOCK   "011001000000000100000101110011000000101000000000000000000000000000000000"
 #define OPEN_FRONT_LEFT  "011001000000000100000101110011000000000000000001000000000000000000000000"
 #define CLOSE_FRONT_LEFT "011001000000000100000101110011000000000000000000000000000000000000000000"
+#define LIGHT_BEAM_ON "011001000000001000000110110011000000001000000000000000000000000000000000"
+#define LIGHT_BEAM_OFF "011001000000001000000110110011000000001000000001000000000000000000000000"
+#define EMCY_LIGHTS "011001000000001000000110110011000000001000000001000000000000000000000000"	//It will be fixed
 
 std::vector<Module*> modules;
 void createModules(src::logger_mt& logger);
@@ -179,6 +182,26 @@ void checkAndExecuteEnvSignal(src::logger_mt& logger)
 		{
 			std::fstream mmf("D:\\private\\OSCAR\\New_Architecture_OSCAR\\OSCAR\\System\\CAN_recv.txt", std::ios::out);
 			std::string content = CLOSE_FRONT_LEFT;
+			if (mmf.good())
+			{
+				mmf << content;
+			}
+			mmf.close();
+		}
+		else if (content.find("LIGHT_BEAM_ON") != std::string::npos)
+		{
+			std::fstream mmf("D:\\private\\OSCAR\\New_Architecture_OSCAR\\OSCAR\\System\\CAN_recv.txt", std::ios::out);
+			std::string content = LIGHT_BEAM_ON;
+			if (mmf.good())
+			{
+				mmf << content;
+			}
+			mmf.close();
+		}
+		else if (content.find("LIGHT_BEAM_OFF") != std::string::npos)
+		{
+			std::fstream mmf("D:\\private\\OSCAR\\New_Architecture_OSCAR\\OSCAR\\System\\CAN_recv.txt", std::ios::out);
+			std::string content = LIGHT_BEAM_OFF;
 			if (mmf.good())
 			{
 				mmf << content;
