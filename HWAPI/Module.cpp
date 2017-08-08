@@ -177,6 +177,12 @@ bool Module::loop()
 				t.detach();
 				return false;
 			}
+			else if (protocol == 7)
+			{
+				boost::thread t(std::bind(&Module::protocol7, this));
+				t.detach();
+				return false;
+			}
 		}
 		return true;
 	}
@@ -186,6 +192,103 @@ bool Module::loop()
 		return false;
 	}
 	
+}
+
+void Module::protocol7()
+{
+	mtx.lock();
+	if (protocol7Flag_ == true)
+		protocol7Flag_ = false;
+	else
+		protocol7Flag_ = true;
+	mtx.unlock();
+	BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " Protocol7 detected";
+	int mask1 = can_->messageRx.data[3];
+	int mask2 = can_->messageRx.data[4];
+	BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " mask1: " << mask1 << " mask2: " << mask2;
+	std::vector<int> connIds;
+	std::bitset<8> bMask1;
+	std::bitset<8> bMask2;
+	for (const auto conn : connectors)
+	{
+		if (conn->id < 8)
+		{
+			if (bMask1[conn->id] != conn->value)
+				connIds.push_back(conn->id);
+		}
+		else
+		{
+			if (bMask2[conn->id - 8] != conn->value)
+				connIds.push_back(conn->id);
+		}
+	}
+	BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " connIds.size() " << connIds.size();
+	while (protocol7Flag_)
+	{
+		if (mask1 != 0)
+		{
+			bMask1 = std::bitset<8>(mask1);
+
+			for (int i = 0; i < 8; i++)
+			{
+				BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " connector id: " << i << " changing value to " << bMask1[i];
+				connectors[i]->value = bMask1[i];
+			}
+		}
+		if (mask2 != 0)
+		{
+			bMask2 = std::bitset<8>(mask2);
+			for (int i = 8; i < connectors.size(); i++)
+			{
+				BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " connector id: " << i << " changing value to " << bMask1[i - 8];
+				connectors[i]->value = bMask1[i - 8];
+			}
+		}
+		can_->messageTx = can_->messageRx;
+		can_->messageTx.id = can_->messageRx.data[1];
+		can_->messageTx.data[2] = 205;	//CD
+		can_->messageTx.data[1] = id_;
+		can_->messageTx.data[0] = 6;
+		can_->messageTx.data[3] = bMask1.to_ulong();
+		can_->messageTx.data[4] = bMask2.to_ulong();
+		can_->messageTx.data[5] = 0;
+		can_->messageTx.data[6] = 0;
+		can_->messageTx.data[7] = 0;
+		sendMessage();
+		boost::this_thread::sleep(boost::posix_time::microsec(500));
+		if (mask1 != 0)
+		{
+			bMask1 = std::bitset<8>(mask1);
+
+			for (int i = 0; i < 8; i++)
+			{
+				BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " connector id: " << i << " changing value to " << bMask1[i];
+				if (bMask1[i] == 1)
+					connectors[i]->value != connectors[i]->value;
+			}
+		}
+		if (mask2 != 0)
+		{
+			bMask2 = std::bitset<8>(mask2);
+			for (int i = 8; i < connectors.size(); i++)
+			{
+				BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " connector id: " << i << " changing value to " << bMask1[i -8];
+				if (bMask2[i-8] ==1)
+					connectors[i]->value != connectors[i]->value;
+			}
+		}
+		can_->messageTx = can_->messageRx;
+		can_->messageTx.id = can_->messageRx.data[1];
+		can_->messageTx.data[2] = 205;	//CD
+		can_->messageTx.data[1] = id_;
+		can_->messageTx.data[0] = 6;
+		can_->messageTx.data[3] = bMask1.to_ulong();
+		can_->messageTx.data[4] = bMask2.to_ulong();
+		can_->messageTx.data[5] = 0;
+		can_->messageTx.data[6] = 0;
+		can_->messageTx.data[7] = 0;
+		sendMessage();
+	}
 }
 
 void Module::protocol6()
@@ -244,10 +347,6 @@ void Module::protocol2()
 	Connector* GlobalConn = new Connector();
 	if (counter < 9)
 	{
-		if (interuption_ != nullptr && can_->messageRx.data[3] == interuption_->connId)
-		{
-			interuption_->value = true;
-		}
 		for (int i = 0; i < counter; i++)
 		{
 			if (can_->messageRx.data[2] == 204)
@@ -293,9 +392,16 @@ void Module::protocol2()
 	}
 	else
 	{
-		interuption_ = new Interuption(can_->messageRx.data[3]);
+		BOOST_LOG(lg_) << "COUNTER IS BIG";
+		if (interuption_ == nullptr)
+			interuption_ = new Interuption(can_->messageRx.data[3]);
+		else if (interuption_ != nullptr && can_->messageRx.data[3] == interuption_->connId)
+		{
+			interuption_->value = true;
+		}
 		while (!interuption_->value)
 		{
+			BOOST_LOG(lg_) << "SENDING";
 			if (can_->messageRx.data[2] == 204)
 			{
 				for (auto &conn : connectors)
@@ -336,7 +442,8 @@ void Module::protocol2()
 				boost::this_thread::sleep(boost::posix_time::milliseconds(interval));
 			}
 		}
-		delete interuption_;
+		BOOST_LOG(lg_) << "DELETING INTERUPTION";
+		interuption_ = nullptr;
 	}
 
 }

@@ -34,7 +34,8 @@ BOOST_LOG_INLINE_GLOBAL_LOGGER_DEFAULT(my_logger, src::logger_mt)
 #define CLOSE_FRONT_LEFT "011001000000000100000101110011000000000000000000000000000000000000000000"
 #define LIGHT_BEAM_ON "011001000000001000000110110011000000001000000000000000000000000000000000"
 #define LIGHT_BEAM_OFF "011001000000001000000110110011000000001000000001000000000000000000000000"
-#define EMCY_LIGHTS "011001000000001000000110110011000000001000000001000000000000000000000000"	//It will be fixed
+#define EMCY_LIGHT_ON "011001000000000100000010110011000000000000000001000000000000000000000000"
+#define EMCY_LIGHT_OFF "011001000000000100000010110011000000000000000000000000000000000000000000"
 
 std::vector<Module*> modules;
 void createModules(src::logger_mt& logger);
@@ -208,6 +209,26 @@ void checkAndExecuteEnvSignal(src::logger_mt& logger)
 			}
 			mmf.close();
 		}
+		else if (content.find("EMCY_LIGHT_ON") != std::string::npos)
+		{
+			std::fstream mmf("D:\\private\\OSCAR\\New_Architecture_OSCAR\\OSCAR\\System\\CAN_recv.txt", std::ios::out);
+			std::string content = EMCY_LIGHT_ON;
+			if (mmf.good())
+			{
+				mmf << content;
+			}
+			mmf.close();
+		}
+		else if (content.find("EMCY_LIGHT_OFF") != std::string::npos)
+		{
+			std::fstream mmf("D:\\private\\OSCAR\\New_Architecture_OSCAR\\OSCAR\\System\\CAN_recv.txt", std::ios::out);
+			std::string content = EMCY_LIGHT_OFF;
+			if (mmf.good())
+			{
+				mmf << content;
+			}
+			mmf.close();
+		}
 	}
 	std::remove("D:\\private\\OSCAR\\New_Architecture_OSCAR\\OSCAR\\System\\simulator.txt");
 }
@@ -270,9 +291,10 @@ int main() {
 		keywords::file_name = "D:\\private\\OSCAR\\New_Architecture_OSCAR\\OSCAR\\Logs\\SIM_SYSLOG_%N.log",
 		keywords::rotation_size = 10 * 1024 * 1024,
 		keywords::time_based_rotation = boost::log::sinks::file::rotation_at_time_point(0, 0, 0),
-		keywords::format = "[%TimeStamp%]: %Message%",
+		keywords::format = "[%TimeStamp%]:[%ThreadID%]:%Message%",
 		keywords::auto_flush = true
 	);
+	lg.add_attribute("ThreadID", boost::log::attributes::current_thread_id());
 	logging::add_common_attributes();
 	logging::record rec = lg.open_record();
 

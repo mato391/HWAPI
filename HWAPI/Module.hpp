@@ -24,8 +24,8 @@ class Interuption
 {
 public:
 	Interuption(int connId) { this->connId = connId; value = false; };
-	connId;
-	value;
+	int connId;
+	bool value;
 };
 
 class Module
@@ -50,8 +50,11 @@ private:
 	CAN* can_;
 	std::string buffer_;
 	Interuption* interuption_;
+	bool protocol7Flag_;
 	bool messageAvailable();
 	void protocol2();
 	void protocol6();
+	void protocol7();
+	boost::mutex mtx;
 };
 
