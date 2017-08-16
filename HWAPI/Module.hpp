@@ -35,6 +35,7 @@ public:
 	{
 		int id;
 		int value;
+		int type;
 	};
 	std::vector<Connector*> connectors;
 	Module(int id, src::logger_mt& lg);
@@ -55,6 +56,8 @@ private:
 	void protocol2();
 	void protocol6();
 	void protocol7();
+	std::vector<int> prepareIntialStates();
 	boost::mutex mtx;
+	std::bitset<8> reverse(std::bitset<8> &set);
 };
 

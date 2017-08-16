@@ -32,10 +32,11 @@ BOOST_LOG_INLINE_GLOBAL_LOGGER_DEFAULT(my_logger, src::logger_mt)
 #define DOOR_LOCK   "011001000000000100000101110011000000101000000000000000000000000000000000"
 #define OPEN_FRONT_LEFT  "011001000000000100000101110011000000000000000001000000000000000000000000"
 #define CLOSE_FRONT_LEFT "011001000000000100000101110011000000000000000000000000000000000000000000"
-#define LIGHT_BEAM_ON "011001000000001000000110110011000000001000000000000000000000000000000000"
-#define LIGHT_BEAM_OFF "011001000000001000000110110011000000001000000001000000000000000000000000"
+#define LIGHT_BEAM_ON  "011001000000000100000010110011000000001100000000000000000000000000000000"
+#define LIGHT_POS_ON   "011001000000000100000010110011000000001000000000000000000000000000000000"
 #define EMCY_LIGHT_ON  "011001000000000100000010110011000000000000000001000000000000000000000000"
 #define EMCY_LIGHT_OFF "011001000000000100000010110011000000000000000000000000000000000000000000"
+#define LIGHT_DAILY_ON "011001000000000100000010110011000000000100000001000000000000000000000000"
 
 std::vector<Module*> modules;
 void createModules(src::logger_mt& logger);
@@ -87,8 +88,8 @@ void createModules(src::logger_mt& logger)
 							module->connectors.push_back(new Module::Connector());
 							module->connectors.back()->id = std::stoi(splittedByValues[0]);
 							module->connectors.back()->value = !std::stoi(splittedByValues[0]);
+							module->connectors.back()->type = !std::stoi(splittedByValues[2]);
 						}
-
 					}
 				}
 			}
@@ -200,16 +201,6 @@ void checkAndExecuteEnvSignal(src::logger_mt& logger)
 			}
 			mmf.close();
 		}
-		else if (content.find("LIGHT_BEAM_OFF") != std::string::npos)
-		{
-			std::fstream mmf("D:\\private\\OSCAR\\New_Architecture_OSCAR\\OSCAR\\System\\CAN_recv.txt", std::ios::out);
-			std::string content = LIGHT_BEAM_OFF;
-			if (mmf.good())
-			{
-				mmf << content;
-			}
-			mmf.close();
-		}
 		else if (content.find("EMCY_LIGHT_ON") != std::string::npos)
 		{
 			std::fstream mmf("D:\\private\\OSCAR\\New_Architecture_OSCAR\\OSCAR\\System\\CAN_recv.txt", std::ios::out);
@@ -219,6 +210,7 @@ void checkAndExecuteEnvSignal(src::logger_mt& logger)
 				mmf << content;
 			}
 			mmf.close();
+			BOOST_LOG(logger) << "DBG " << __FUNCTION__ << " sent out message ";
 		}
 		else if (content.find("EMCY_LIGHT_OFF") != std::string::npos)
 		{
@@ -230,6 +222,27 @@ void checkAndExecuteEnvSignal(src::logger_mt& logger)
 			}
 			mmf.close();
 		}
+		else if (content.find("LIGHT_DAILY_ON") != std::string::npos)
+		{
+			std::fstream mmf("D:\\private\\OSCAR\\New_Architecture_OSCAR\\OSCAR\\System\\CAN_recv.txt", std::ios::out);
+			std::string content = LIGHT_DAILY_ON;
+			if (mmf.good())
+			{
+				mmf << content;
+			}
+			mmf.close();
+		}
+		else if (content.find("LIGHT_POS_ON") != std::string::npos)
+		{
+			std::fstream mmf("D:\\private\\OSCAR\\New_Architecture_OSCAR\\OSCAR\\System\\CAN_recv.txt", std::ios::out);
+			std::string content = LIGHT_POS_ON;
+			if (mmf.good())
+			{
+				mmf << content;
+			}
+			mmf.close();
+		}
+		
 	}
 	std::remove("D:\\private\\OSCAR\\New_Architecture_OSCAR\\OSCAR\\System\\simulator.txt");
 }

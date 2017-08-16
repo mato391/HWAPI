@@ -41,6 +41,109 @@ bool Module::sendMessage()
 		return true;
 }
 
+std::vector<int> Module::prepareIntialStates()
+{
+	int mask1 = 0;
+	int mask2 = 0;
+	int mask3 = 0;
+	int mask4 = 0;
+	BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " conn.size is " << connectors.size();
+	if (connectors.size() <= 8)
+	{
+		for (int i = 0; i < connectors.size(); i++)
+		{
+			if (connectors[i]->type == 0)
+			{
+				mask1 += std::pow(2, i);
+			}
+		}
+		BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " mask1 " << mask1;
+	}
+	else if (connectors.size() > 8 && connectors.size() < 16)
+	{
+		for (int i = 0; i < 8; i++)
+		{
+			if (connectors[i]->type == 0)
+			{
+				mask1 += std::pow(2, i);
+			}
+		}
+		BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " mask1 " << mask1;
+		for (int i = 8; i < connectors.size(); i++)
+		{
+			if (connectors[i]->type == 0)
+			{
+				mask2 += std::pow(2, i - 8);
+			}
+		}
+		BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " mask2 " << mask2;
+	}
+	else if (connectors.size() > 16 && connectors.size() < 24)
+	{
+		for (int i = 0; i < 8; i++)
+		{
+			if (connectors[i]->type == 0)
+			{
+				mask1 += std::pow(2, i);
+			}
+		}
+		BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " mask1 " << mask1;
+		for (int i = 8; i < 16; i++)
+		{
+			if (connectors[i]->type == 0)
+			{
+				mask2 += std::pow(2, i - 8);
+			}
+		}
+		BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " mask2 " << mask2;
+		for (int i = 16; i < connectors.size(); i++)
+		{
+			if (connectors[i]->type == 0)
+			{
+				mask3 += std::pow(2, i - 16);
+			}
+		}
+		BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " mask3 " << mask3;
+	}
+	else if (connectors.size() > 24)
+	{
+		for (int i = 0; i < 8; i++)
+		{
+			if (connectors[i]->type == 0)
+			{
+				mask1 += std::pow(2, i);
+			}
+		}
+		BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " mask1 " << mask1;
+		for (int i = 8; i < 16; i++)
+		{
+			if (connectors[i]->type == 0)
+			{
+				mask2 += std::pow(2, i - 8);
+			}
+		}
+		BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " mask2 " << mask2;
+		for (int i = 16; i < 24; i++)
+		{
+			if (connectors[i]->type == 0)
+			{
+				mask3 += std::pow(2, i - 16);
+			}
+		}
+		BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " mask3 " << mask3;
+		for (int i = 24; i < connectors.size(); i++)
+		{
+			if (connectors[i]->type == 0)
+			{
+				mask4 += std::pow(2, i - 24);
+			}
+		}
+		BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " mask4 " << mask4;
+	}
+	return {mask1, mask2, mask3, mask4};
+	
+}
+
 bool Module::loop()
 {
 	if (messageAvailable())
@@ -80,30 +183,17 @@ bool Module::loop()
 				if (can_->messageRx.data[2] == 170)
 				{
 					BOOST_LOG(lg_) << "INF " << "Module::loop: MOD[" << this->domain << "] " << "AA message responded";
+					//auto masks = prepareIntialStates();
 					can_->messageTx.id = can_->messageRx.data[1];
 					can_->messageTx.data[0] = 0;
 					can_->messageTx.data[1] = id_;
 					can_->messageTx.data[2] = 187;
+					can_->messageTx.data[3] = 255;//masks[0];
+					can_->messageTx.data[4] = 255;//masks[1];
+					can_->messageTx.data[5] = 255;//masks[2];
+					can_->messageTx.data[6] = 255;//masks[3];
+					can_->messageTx.data[7] = 0;
 
-					int i = connectors.size();
-					int bytes = i / 8;
-					BOOST_LOG(lg_) << "INF " << "Module::loop: MOD[" << this->domain << "] " << "Connectors counter: " << i << " bytes to use: " << bytes;
-					int rest = i % 8;
-					if (bytes > 0)
-					{
-						BOOST_LOG(lg_) << "INF " << "Module::loop: MOD[" << this->domain << "] " << "I: " << i << " messageTx.data[" << 3 << "]";
-						can_->messageTx.data[3] = 255;
-						can_->messageTx.data[4] = std::pow(2, rest);
-
-					}
-					else
-					{
-						can_->messageTx.data[3] = std::pow(2, rest);
-					}
-					for (const auto &byte : can_->messageTx.data)
-					{
-						std::cout << static_cast<int>(byte) << std::endl;
-					}
 				}
 				else if (can_->messageRx.data[2] == 188)
 				{
@@ -194,18 +284,56 @@ bool Module::loop()
 	
 }
 
+std::bitset<8> Module::reverse(std::bitset<8> &set)
+{
+	std::bitset<8> result;
+
+	for (size_t i = 0; i < 8; i++)
+		result[i] = set[8 - i - 1];
+
+	return result;
+}
+
 void Module::protocol7()
 {
 	BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " Protocol7 detected";
 	int mask1 = can_->messageRx.data[3];
 	int mask2 = can_->messageRx.data[4];
+	int mask3 = can_->messageRx.data[5];
+	int mask4 = can_->messageRx.data[6];
 	BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " mask1: " << mask1 << " mask2: " << mask2;
 	
 	std::vector<int> connIds;
-	std::bitset<8> bMask1;
-	std::bitset<8> bMask2;
-	int counter = static_cast<int>(can_->messageRx.data[6]);
-	int interval = static_cast<int>(can_->messageRx.data[5]) * 100;
+	std::bitset<8> bMask1(mask1);
+	bMask1 = reverse(bMask1);
+	std::bitset<8> bMask2(mask2);
+	bMask2 = reverse(bMask2);
+	std::bitset<8> bMask3(mask3);
+	bMask3 = reverse(bMask3);
+	std::bitset<8> bMask4(mask4);
+	bMask4 = reverse(bMask4);
+	auto data7s = std::to_string(static_cast<int>(can_->messageRx.data[7]));
+	int counter = 0;
+	int interval = 0;
+	if (data7s.size() == 2)
+	{
+		interval = std::stoi(std::to_string(static_cast<int>(can_->messageRx.data[7])).substr(0, 1)) * 100;
+		counter = std::stoi(std::to_string(static_cast<int>(can_->messageRx.data[7])).substr(1, 1));
+	}
+	else if (data7s.size() == 3)
+	{
+		if (data7s[0] == '0')
+		{
+			interval= std::stoi(std::to_string(static_cast<int>(can_->messageRx.data[7])).substr(0, 2)) * 100;
+			counter = std::stoi(std::to_string(static_cast<int>(can_->messageRx.data[7])).substr(2, 1));
+		}
+		else
+		{
+			interval = std::stoi(std::to_string(static_cast<int>(can_->messageRx.data[7])).substr(0, 1)) * 100;
+			counter = std::stoi(std::to_string(static_cast<int>(can_->messageRx.data[7])).substr(1, 2));
+		}
+
+	}
 	BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " counter: " << counter << " interval: " << interval;
 	for (const auto conn : connectors)
 	{
@@ -214,9 +342,19 @@ void Module::protocol7()
 			if (bMask1[conn->id] != conn->value)
 				connIds.push_back(conn->id);
 		}
-		else
+		else if (conn->id > 8 && conn->id < 16)
 		{
 			if (bMask2[conn->id - 8] != conn->value)
+				connIds.push_back(conn->id);
+		}
+		else if (conn->id > 16 && conn->id < 24)
+		{
+			if (bMask3[conn->id - 16] != conn->value)
+				connIds.push_back(conn->id);
+		}
+		else if (conn->id >24 && conn->id < 32)
+		{
+			if (bMask4[conn->id - 24] != conn->value)
 				connIds.push_back(conn->id);
 		}
 	}
@@ -230,13 +368,11 @@ void Module::protocol7()
 		BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " counter 0";
 		if (mask1 != 0)
 		{
-			bMask1 = std::bitset<8>(mask1);
-
-			for (int i = 0; i < 8; i++)
+					for (int i = 0; i < 8; i++)
 			{
-				if (bMask1[i] == 1)
+				if (bMask1[i] == 1 && i < connectors.size())
 				{
-					connectors[i]->value = !connectors[i]->value;
+					connectors[i]->value = ((connectors[i]->value == 1) ? 0 : 1);
 					BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " connector id: " << i << " changing value to " << connectors[i]->value;
 				}
 
@@ -244,12 +380,35 @@ void Module::protocol7()
 		}
 		if (mask2 != 0)
 		{
-			bMask2 = std::bitset<8>(mask2);
-			for (int i = 8; i < connectors.size(); i++)
+			for (int i = 8; i < 16; i++)
 			{
-				if (bMask2[i - 8] == 1)
+				if (bMask2[i - 8] == 1 && i < connectors.size())
 				{
-					connectors[i]->value = !connectors[i]->value;
+					connectors[i]->value = ((connectors[i]->value == 1) ? 0 : 1);
+					BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " connector id: " << i << " changing value to " << connectors[i]->value;
+				}
+
+			}
+		}
+		if (mask3 != 0)
+		{
+			for (int i = 16; i < 24; i++)
+			{
+				if (bMask3[i - 16] == 1 && i < connectors.size())
+				{
+					connectors[i]->value = ((connectors[i]->value == 1) ? 0 : 1);
+					BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " connector id: " << i << " changing value to " << connectors[i]->value;
+				}
+
+			}
+		}
+		if (mask4 != 0)
+		{
+			for (int i = 24; i < connectors.size(); i++)
+			{
+				if (bMask4[i - 24] == 1 && i < connectors.size())
+				{
+					connectors[i]->value = ((connectors[i]->value == 1) ? 0 : 1);
 					BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " connector id: " << i << " changing value to " << connectors[i]->value;
 				}
 
@@ -262,8 +421,8 @@ void Module::protocol7()
 		can_->messageTx.data[0] = 6;
 		can_->messageTx.data[3] = bMask1.to_ulong();
 		can_->messageTx.data[4] = bMask2.to_ulong();
-		can_->messageTx.data[5] = 0;
-		can_->messageTx.data[6] = 0;
+		can_->messageTx.data[5] = bMask3.to_ulong();
+		can_->messageTx.data[6] = bMask4.to_ulong();
 		can_->messageTx.data[7] = 0;
 		sendMessage();
 	}
@@ -280,8 +439,6 @@ void Module::protocol7()
 		{
 			if (mask1 != 0)
 			{
-				bMask1 = std::bitset<8>(mask1);
-
 				for (int i = 0; i < 8; i++)
 				{
 					if (bMask1[i] == 1)
@@ -294,8 +451,7 @@ void Module::protocol7()
 			}
 			if (mask2 != 0)
 			{
-				bMask2 = std::bitset<8>(mask2);
-				for (int i = 8; i < connectors.size(); i++)
+				for (int i = 8; i < 16; i++)
 				{
 					if (bMask2[i - 8] == 1)
 					{
@@ -305,6 +461,30 @@ void Module::protocol7()
 					
 				}
 			}
+			if (mask3 != 0)
+			{
+				for (int i = 16; i < 24; i++)
+				{
+					if (bMask3[i - 16] == 1)
+					{
+						connectors[i]->value = !connectors[i]->value;
+						BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " connector id: " << i << " changing value to " << connectors[i]->value;
+					}
+
+				}
+			}
+			if (mask4 != 0)
+			{
+				for (int i = 24; i < connectors.size(); i++)
+				{
+					if (bMask2[i - 24] == 1)
+					{
+						connectors[i]->value = !connectors[i]->value;
+						BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " connector id: " << i << " changing value to " << connectors[i]->value;
+					}
+
+				}
+			}
 			can_->messageTx = can_->messageRx;
 			can_->messageTx.id = can_->messageRx.data[1];
 			can_->messageTx.data[2] = 205;	//CD
@@ -312,15 +492,13 @@ void Module::protocol7()
 			can_->messageTx.data[0] = 6;
 			can_->messageTx.data[3] = bMask1.to_ulong();
 			can_->messageTx.data[4] = bMask2.to_ulong();
-			can_->messageTx.data[5] = 0;
-			can_->messageTx.data[6] = 0;
+			can_->messageTx.data[5] = bMask3.to_ulong();
+			can_->messageTx.data[6] = bMask4.to_ulong();
 			can_->messageTx.data[7] = 0;
 			sendMessage();
 			boost::this_thread::sleep(boost::posix_time::milliseconds(interval));
 			if (mask1 != 0)
 			{
-				bMask1 = std::bitset<8>(mask1);
-
 				for (int i = 0; i < 8; i++)
 				{
 					if (bMask1[i] == 1)
@@ -328,15 +506,38 @@ void Module::protocol7()
 						connectors[i]->value = !connectors[i]->value;
 						BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " connector id: " << i << " changing value to " << connectors[i]->value;
 					}
-						
+
 				}
 			}
 			if (mask2 != 0)
 			{
-				bMask2 = std::bitset<8>(mask2);
-				for (int i = 8; i < connectors.size(); i++)
+				for (int i = 8; i < 16; i++)
 				{
 					if (bMask2[i - 8] == 1)
+					{
+						connectors[i]->value = !connectors[i]->value;
+						BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " connector id: " << i << " changing value to " << connectors[i]->value;
+					}
+
+				}
+			}
+			if (mask3 != 0)
+			{
+				for (int i = 16; i < 24; i++)
+				{
+					if (bMask3[i - 16] == 1)
+					{
+						connectors[i]->value = !connectors[i]->value;
+						BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " connector id: " << i << " changing value to " << connectors[i]->value;
+					}
+
+				}
+			}
+			if (mask4 != 0)
+			{
+				for (int i = 24; i < connectors.size(); i++)
+				{
+					if (bMask2[i - 24] == 1)
 					{
 						connectors[i]->value = !connectors[i]->value;
 						BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " connector id: " << i << " changing value to " << connectors[i]->value;
@@ -351,42 +552,63 @@ void Module::protocol7()
 			can_->messageTx.data[0] = 6;
 			can_->messageTx.data[3] = bMask1.to_ulong();
 			can_->messageTx.data[4] = bMask2.to_ulong();
-			can_->messageTx.data[5] = 0;
-			can_->messageTx.data[6] = 0;
+			can_->messageTx.data[5] = bMask3.to_ulong();
+			can_->messageTx.data[6] = bMask4.to_ulong();
 			can_->messageTx.data[7] = 0;
 			sendMessage();
 		}
 	}
 	else
 	{
-		BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " counter 0<x<9";
+		BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " counter 0<x<9 " << counter;
 		for (int i = 0; i < counter; i++)
 		{
 			if (mask1 != 0)
 			{
-				bMask1 = std::bitset<8>(mask1);
-
 				for (int i = 0; i < 8; i++)
 				{
-					if (bMask1[i] == 1)
+					if (bMask1[i] == 1 && connectors.size() > i)
 					{
 						connectors[i]->value = !connectors[i]->value;
 						BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " connector id: " << i << " changing value to " << connectors[i]->value;
 					}
-					
-					
+
 				}
 			}
 			if (mask2 != 0)
 			{
-				bMask2 = std::bitset<8>(mask2);
-				for (int i = 8; i < connectors.size(); i++)
+				for (int i = 8; i < 16; i++)
 				{
-					if (bMask2[i - 8] == 1)
+					if (bMask2[i - 8] == 1 && connectors.size() > i)
 					{
 						connectors[i]->value = !connectors[i]->value;
 						BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " connector id: " << i << " changing value to " << connectors[i]->value;
 					}
+
+				}
+			}
+			if (mask3 != 0)
+			{
+				for (int i = 16; i < 24; i++)
+				{
+					if (bMask3[i - 16] == 1 && connectors.size() > i)
+					{
+						connectors[i]->value = !connectors[i]->value;
+						BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " connector id: " << i << " changing value to " << connectors[i]->value;
+					}
+
+				}
+			}
+			if (mask4 != 0 && connectors.size() > i)
+			{
+				for (int i = 24; i < connectors.size(); i++)
+				{
+					if (bMask2[i - 24] == 1)
+					{
+						connectors[i]->value = !connectors[i]->value;
+						BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " connector id: " << i << " changing value to " << connectors[i]->value;
+					}
+
 				}
 			}
 			can_->messageTx = can_->messageRx;
@@ -396,36 +618,57 @@ void Module::protocol7()
 			can_->messageTx.data[0] = 6;
 			can_->messageTx.data[3] = bMask1.to_ulong();
 			can_->messageTx.data[4] = bMask2.to_ulong();
-			can_->messageTx.data[5] = 0;
-			can_->messageTx.data[6] = 0;
+			can_->messageTx.data[5] = bMask3.to_ulong();
+			can_->messageTx.data[6] = bMask4.to_ulong();
 			can_->messageTx.data[7] = 0;
 			sendMessage();
 			boost::this_thread::sleep(boost::posix_time::milliseconds(interval));
 			if (mask1 != 0)
 			{
-				bMask1 = std::bitset<8>(mask1);
-
 				for (int i = 0; i < 8; i++)
 				{
-					if (bMask1[i] == 1)
+					if (bMask1[i] == 1 && connectors.size() > i)
 					{
 						connectors[i]->value = !connectors[i]->value;
 						BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " connector id: " << i << " changing value to " << connectors[i]->value;
 					}
-
 
 				}
 			}
 			if (mask2 != 0)
 			{
-				bMask2 = std::bitset<8>(mask2);
-				for (int i = 8; i < connectors.size(); i++)
+				for (int i = 8; i < 16; i++)
 				{
-					if (bMask2[i - 8] == 1)
+					if (bMask2[i - 8] == 1 && connectors.size() > i)
 					{
 						connectors[i]->value = !connectors[i]->value;
 						BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " connector id: " << i << " changing value to " << connectors[i]->value;
 					}
+
+				}
+			}
+			if (mask3 != 0)
+			{
+				for (int i = 16; i < 24; i++)
+				{
+					if (bMask3[i - 16] == 1 && connectors.size() > i)
+					{
+						connectors[i]->value = !connectors[i]->value;
+						BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " connector id: " << i << " changing value to " << connectors[i]->value;
+					}
+
+				}
+			}
+			if (mask4 != 0)
+			{
+				for (int i = 24; i < connectors.size(); i++)
+				{
+					if (bMask2[i - 24] == 1 && connectors.size() > i)
+					{
+						connectors[i]->value = !connectors[i]->value;
+						BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " connector id: " << i << " changing value to " << connectors[i]->value;
+					}
+
 				}
 			}
 			can_->messageTx = can_->messageRx;
@@ -435,8 +678,8 @@ void Module::protocol7()
 			can_->messageTx.data[0] = 6;
 			can_->messageTx.data[3] = bMask1.to_ulong();
 			can_->messageTx.data[4] = bMask2.to_ulong();
-			can_->messageTx.data[5] = 0;
-			can_->messageTx.data[6] = 0;
+			can_->messageTx.data[5] = bMask3.to_ulong();
+			can_->messageTx.data[6] = bMask4.to_ulong();
 			can_->messageTx.data[7] = 0;
 			sendMessage();
 		}
@@ -448,6 +691,8 @@ void Module::protocol6()
 	BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " Protocol6 detected";
 	int mask1 = can_->messageRx.data[3];
 	int mask2 = can_->messageRx.data[4];
+	int mask3 = can_->messageRx.data[5];
+	int mask4 = can_->messageRx.data[6];
 	if (mask1 != 0)
 	{
 		std::bitset<8> bMask1(mask1);
@@ -458,31 +703,48 @@ void Module::protocol6()
 			connectors[i]->value = bMask1[i];
 		}
 	}
-	std::bitset<8> bMask2(mask2);
-	if (connectors.size() >= 8)
+	if (mask2 != 0)
 	{
+		std::bitset<8> bMask2(mask2);
+
 		for (int i = 8; i < 16; i++)
 		{
-			if (i >= connectors.size())
-			{
-				can_->messageTx = can_->messageRx;
-				can_->messageTx.id = can_->messageRx.data[1];
-				can_->messageTx.data[2] = 205;	//CD
-				can_->messageTx.data[1] = id_;
-				can_->messageTx.data[0] = protocol;
-				can_->messageTx.data[3] = can_->messageRx.data[3];
-				can_->messageTx.data[4] = can_->messageRx.data[4];
-				can_->messageTx.data[5] = 0;
-				can_->messageTx.data[6] = 0;
-				can_->messageTx.data[7] = 0;
-				sendMessage();
-				return;
-			}
-			connectors[i]->value = bMask2[i - 8];
 			BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " connector id: " << i << " changing value to " << bMask2[i - 8];
-
+			connectors[i]->value = bMask2[i - 8];
 		}
 	}
+	if (mask3 != 0)
+	{
+		std::bitset<8> bMask3(mask3);
+
+		for (int i = 16; i < 24; i++)
+		{
+			BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " connector id: " << i << " changing value to " << bMask3[i - 16];
+			connectors[i]->value = bMask3[i - 16];
+		}
+	}
+	if (mask4 != 0)
+	{
+		std::bitset<8> bMask4(mask4);
+
+		for (int i = 24; i < 32; i++)
+		{
+			BOOST_LOG(lg_) << "INF " << __FUNCTION__ << " connector id: " << i << " changing value to " << bMask4[i - 24];
+			connectors[i]->value = bMask4[i - 24];
+		}
+	}
+	can_->messageTx = can_->messageRx;
+	can_->messageTx.id = can_->messageRx.data[1];
+	can_->messageTx.data[2] = 205;	//CD
+	can_->messageTx.data[1] = id_;
+	can_->messageTx.data[0] = protocol;
+	can_->messageTx.data[3] = can_->messageRx.data[3];
+	can_->messageTx.data[4] = can_->messageRx.data[4];
+	can_->messageTx.data[5] = can_->messageRx.data[5];
+	can_->messageTx.data[6] = can_->messageRx.data[6];
+	can_->messageTx.data[7] = 0;
+	sendMessage();
+	return;
 }
 
 void Module::protocol2()
